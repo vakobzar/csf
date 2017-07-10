@@ -26,7 +26,7 @@ subject_data = data{subject_index}(:,:);
 
 %minimize the residual
 options = optimoptions(@fminunc,'Algorithm','quasi-newton');
-[x,fval,exitflag,output] = fminunc(@(x)residual(x, subject_data),x0);
+[x,fval,exitflag,output] = fminunc(@(x)residual(x, subject_data),x0, options);
 %plot the data
 B= make_brain(x(1), x(2), subject_data);
 
