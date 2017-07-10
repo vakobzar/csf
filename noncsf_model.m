@@ -1,7 +1,6 @@
-%This program plots the difference between the single compartment 
+%This code plots the single compartment 
 %perfusion model, i.e., disregarding the CSF, and the grey matter 
-%concentration measurements
-
+%concentration measurements.
 
 filename = 'TACdata.xlsx'; %Excel spreadsheet name
 sheet = 1;                 %relevant sheet number in the spreadsheet
@@ -26,14 +25,15 @@ subject_index = find(subjects==subject);
 subject_data = data{subject_index}(:,:);
 
 %minimize the residual
-[x,fval,exitflag,output] = fminunc(@(x)residual(x, subject_data),x0,options);
+options = optimoptions(@fminunc,'Algorithm','quasi-newton');
+[x,fval,exitflag,output] = fminunc(@(x)residual(x, subject_data),x0);
 %plot the data
 B= make_brain(x(1), x(2), subject_data);
 
 figure; % new figure
 
 p1=plot(cell2mat(subject_data(:,2)), cell2mat(subject_data(:,3)),...
-     cell2mat(subject_data(:,2)), B1);
+     cell2mat(subject_data(:,2)), B);
 p1(2).Marker = '.';
 title({['Single compartment model, i.e., disregarding the CSF,',...
        ' vs grey matter measurements'], ['for subject ' num2str(subject),...
@@ -41,7 +41,7 @@ title({['Single compartment model, i.e., disregarding the CSF,',...
 ylabel('B(t)');
 xlabel('t');
 legend('Measurements', 'Model');
-saveas(gcf, 'nonCSFmodel', 'pdf')
+saveas(gcf, 'noncsf_model', 'pdf')
 
 function r= residual (x, subject_data)
 % This function approximates the L2 norm distance
