@@ -11,11 +11,12 @@ data_labels= {'start','end','grey', 'AIF'};  %headers of the data columns
 %filename = 'TAC_matlab.xlsx';
 %data_labels= {'start', 'end','GM','AIF'}; 
 
-subject = 5385;
+subject = 5318%5385;
 
-k=.3; % the input = output flow = k ml of blood per minute
+k1=.3; % the input = output flow = k ml of blood per minute
+k2=.2
 V = 1.5; % Volume of tissue in 1000 ml
-x0= [k,V]; % initialization of the minimization 
+x0= [k1/V, k2/V]; % initialization of the minimization 
 
 %load the data from the spreadsheet
 [data, subjects] = TACfromXls (filename, sheet, subject_label, data_labels);
@@ -37,7 +38,7 @@ p1=plot(cell2mat(subject_data(:,2)), cell2mat(subject_data(:,3)),...
 p1(2).Marker = '.';
 title({['Single compartment model, i.e., disregarding the CSF,',...
        ' vs grey matter measurements'], ['for subject ' num2str(subject),...
-        ' (k=' num2str(x(1)), ' V=' num2str(x(2)) ')' ]});
+        ' (k_1/V=' num2str(x(1)), ' k2/V=' num2str(x(2)) ')' ]});
 ylabel('B(t)');
 xlabel('t');
 legend('Measurements', 'Model');
@@ -46,21 +47,21 @@ saveas(gcf, 'noncsf_model', 'pdf')
 function r= residual (x, subject_data)
 % This function approximates the L2 norm distance
 % between the concentration measurements of the 
-    k=x(1);
-    V=x(2);
-    B = make_brain(k, V, subject_data);
+    k1divV=x(1);
+    k2divV=x(2);
+    B = make_brain(k1divV, k2divV, subject_data);
     r = norm (cell2mat(subject_data(:,3))- B,2); 
 end
  
-function B= make_brain (k, V, subject_data)
+function B= make_brain (k1divV, k2divV, subject_data)
 
 % This function approximates the solution of
-% VC'(t) = kA(t) - kC(t)
+% VC'(t) = k1A(t) - k2C(t)
 % given by 
-% C(t) = 1/V * \int_0^t A(u) exp (-k(t-u)/V) du 
+% C(t) = k1/V * \int_0^t A(u) exp (-k2(t-u)/V) du 
 % as 
-% C(t_i)=1/V*\sum_{j=1}^i \int_{t_{j-1}}^{t_j} A(t_j) exp(-k(t-u)/V)du
-%       = 1/k*\sum_{j=1}^i A(t_j) [exp(-k(t-u)/V)]_{u=t_{j-1}}^{t_j}
+% C(t_i)=k1/V*\sum_{j=1}^i \int_{t_{j-1}}^{t_j} A(t_j) exp(-k2(t-u)/V)du
+%       = k1/k2*\sum_{j=1}^i A(t_j) [exp(-k2(t_i-u)/V)]_{u=t_{j-1}}^{t_j}
 % for discrete measurements, where 
 % {t_{j-1}} are subject_data(:,1)
 % {t_{j}} are subject_data(:,2)
@@ -71,14 +72,14 @@ A =  num2cell(subject_data,2);
 [n,~] = size(A);
 lin_idx = 1:n;
 I =  num2cell (lin_idx); 
-B= cellfun(@(i)sum_convo_terms(k, V, A, i), I); 
+B= cellfun(@(i)sum_convo_terms(k1divV, k2divV, A, i), I); 
 
- function s = sum_convo_terms(k,V, A, i)
+ function s = sum_convo_terms(k1divV,k2divV, A, i)
        C = cellfun(@(a)convo_term(a, A{i}{2}), A(1:i));  
-       s = sum(C)/k ;
+       s = k1divV*sum(C)/k2divV ;
        
        function c = convo_term(Aj, ti)
-          c = Aj{4}*(exp(-k*(ti-Aj{2})/V)-exp (-k*(ti-Aj{1})/V));
+          c = Aj{4}*(exp(-k2divV*(ti-Aj{2}))-exp (-k2divV*(ti-Aj{1})));
        end
  end
 end
