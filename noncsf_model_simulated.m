@@ -11,17 +11,17 @@ data_labels= {'start','end', 'grey', 'AIF'};  %headers of the data columns
 %filename = 'TAC_matlab.xlsx';
 %data_labels= {'start', 'end','GM','AIF'}; 
 
-subject = 5385;
+subject = 5318%5385;
 
 %parameters of the simulated data
-k=.38346; % the input = output flow = k ml of blood per minute
-V = 1.5161; % Volume of tissue in 1000 ml
-sigma =0.2 % noise level
+k1divV=.69082; % the input = output flow = k ml of blood per minute
+k2divV=.20789; % Volume of tissue in 1000 ml
+sigma =0.1 % noise level
 
 %intialization of the minimzation
-kinit=2; % the input = output flow = k ml of blood per minute
-Vinit = .2; % Volume of tissue in 1000 ml
-x0= [kinit,Vinit]; % initialization of the minimization 
+k1divVinit=2; % the input = output flow = k ml of blood per minute
+k2divVinit = .1; % Volume of tissue in 1000 ml
+x0= [k1divVinit,k2divVinit]; % initialization of the minimization 
 
 %load the data from the spreadsheet
 [data, subjects] = TACfromXls (filename, sheet, subject_label, data_labels);
@@ -31,7 +31,7 @@ subject_index = find(subjects==subject);
 subject_data = data{subject_index}(:,:);
 
 %simulate an ideal brain curve
-Bideal= make_brain(k, V, subject_data);
+Bideal= make_brain(k1divV, k2divV, subject_data);
 
 %apply a pseudo-random 10% error to both blood and brain curves, 
 A = cell2mat (subject_data(:,4))
@@ -59,134 +59,17 @@ p1(2).Marker = '.';
 title({['Single compartment model simulations, i.e., ',...
         'disregarding the CSF,'],...
         ['for AIF from subject ' num2str(subject),...
-        ' (k_{pert}=' num2str(x(1)), ' V_{pert}=' num2str(x(2)) ')' ]});
+        ' (k1_{pert}/V=' num2str(x(1)), ' k2_{pert}/V=' num2str(x(2)) ')' ]});
 ylabel('B(t)');
 xlabel('t');
-legend(['Noiseless simulation (k=' num2str(k), ' V=' num2str(V) ')' ],...
+legend(['Noiseless simulation (k1/V=' num2str(k1divV), ' k2/V=' num2str(k2divV) ')' ],...
        ['Noise perturbed (sigma=', num2str(sigma), ')'],...
-       ['Recovery from Noise (k_{init}=' num2str(kinit),...
-                            ' V_{init}=' num2str(Vinit) ')']);
+       ['Recovery from Noise (k1_{init}/V=' num2str(k1divVinit),...
+                            ' k2_{init}/V=' num2str(k2divVinit) ')']);
 saveas(gcf, 'noncsf_model_simulated', 'pdf')
 
-function r= residual (x, subject_data)
-% This function approximates the L2 norm distance
-% between the concentration measurements of the 
-    k=x(1);
-    V=x(2);
-    B = make_brain(k, V, subject_data);
-    r = norm (cell2mat(subject_data(:,3))- B,2); 
-end
- 
-function B= make_brain (k, V, subject_data)
-
-% This function approximates the solution of
-% VC'(t) = kA(t) - kC(t)
-% given by 
-% C(t) = 1/V * \int_0^t A(u) exp (-k(t-u)/V) du 
-% as 
-% C(t_i)=1/V*\sum_{j=1}^i \int_{t_{j-1}}^{t_j} A(t_j) exp(-k(t-u)/V)du
-%       = 1/k*\sum_{j=1}^i A(t_j) [exp(-k(t-u)/V)]_{u=t_{j-1}}^{t_j}
-% for discrete measurements, where 
-% {t_{j-1}} are subject_data(:,1)
-% {t_{j}} are subject_data(:,2)
-% {C(t_i)} are subject_data(:,3)
-% {A(t_j)} are subject_data(:,4)
-
-A =  num2cell(subject_data,2);
-[n,~] = size(A);
-lin_idx = 1:n;
-I =  num2cell (lin_idx); 
-B= cellfun(@(i)sum_convo_terms(k, V, A, i), I); 
-
- function s = sum_convo_terms(k,V, A, i)
-       C = cellfun(@(a)convo_term(a, A{i}{2}), A(1:i));  
-       s = sum(C)/k ;
-       
-       function c = convo_term(Aj, ti)
-          c = Aj{4}*(exp(-k*(ti-Aj{2})/V)-exp (-k*(ti-Aj{1})/V));
-       end
- end
-end
-
-
-function [data, subjects]= TACfromXls (filename, sheet, subject_label, data_labels)
-
-% This function loads the content of sheet number 'sheet' from an Excel 
-% file 'filename' into a 1 x m cell array, where m is the number of
-% subjects identified by a unique unsigned integer in the column headed
-% by 'subject_label'.  Each cell contains a n x k double cell array where 
-% n is the number of measurements per subject and k is the number of 
-% variables that were measured. 
-
-[~,~,raw]= xlsread(filename,1);
-txt = cellfun(@num2str,raw,'UniformOutput',0);
-
-%identify the column 'label_col' with subject/image label
-TF = contains(txt, subject_label, 'Ignorecase', true);
-[~, columns] = size(txt(TF));
-if columns==1 
-    [label_row,label_column,v] = find(TF);
-    fprintf(['The labels %s are in column %i ',...
-              'of %s.\n'], subject_label, ...
-                     label_column(1), filename);
-    label_col=label_column(1); 
-else 
-    error ('Error. Cannot identify the column with the subject ',...
-             'labels %s in %s.\n', subject_label,  filename);
-end
-
-%identify the subjects labeled by unique unsigned integers 'subjects'
-index=cellfun(@(s)sscanf(s,'%u',1), txt(:,label_col), 'uniformoutput',false);
-index_mat= cell2mat(index(~cellfun(@isempty, index)));
-[~,idx]=unique(index_mat,'rows');
-subjects = index_mat(idx,:);
-[total_subjects, ~] = size(subjects); 
-if (total_subjects>0)
-    fprintf(['%u unique subject labels found in column %u ',...
-              'of %s.\n'], total_subjects, label_col, filename);
-else 
-    error ('Error. Cannot identify the subject labels ',...
-             'in column %u of %s.\n', subject_label,  filename);
-end
-
-%identify the columns 'data_col' with the data entries
-data_col = [];
-[~, data_fields] = size(data_labels); 
-for i = 1:data_fields
-    TF = contains(txt, data_labels{i}, 'Ignorecase', true);
-    [row, columns] = size(txt(TF));
-    if (columns == 1) && (row >=1)  
-        [data_row, data_column,v] = find(TF);
-        fprintf(['The entries %s are in column %i ',...
-            'of %s.\n'], data_labels{i}, data_column(1), filename);
-        data_col(i) = data_column(1);
-    else  
-        error (['Error. Cannot identify the columns with the entries ',...
-           'labels %s in %s.\n'], data_labels{i}, filename);
-    end 
-end
-
-
-
-for i=1:total_subjects
-    TF = contains(txt(:, label_col), string(subjects(i)), 'Ignorecase', true);
-    tmp = raw(TF, data_col); 
-    numericTF= cellfun(@isnumeric,tmp);
-    tmp(~numericTF)={nan};
-    tmp(any(cellfun(@(x) any(isnan(x)),tmp),2),:) = [];
-    [entries_loaded, ~] = size(tmp); 
-    fprintf(['%u entries points loaded for subject %i',...
-              'from %s.\n'], entries_loaded, subjects(i), filename);
-    data{i} = tmp;
-
-end 
-
-end
-
-
-
-
 
  
+
        
 
