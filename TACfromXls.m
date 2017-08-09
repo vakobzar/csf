@@ -3,7 +3,7 @@ function [data, subjects]= TACfromXls (filename, sheet, subject_label, data_labe
 % This function loads the content of sheet number 'sheet' from an Excel 
 % file 'filename' into a 1 x m cell array, where m is the number of
 % subjects identified by a unique unsigned integer in the column headed
-% by 'subject_label'.  Each cell contains a n x k double cell array where 
+% by 'subject_label'.  Each cell contains a n x k double array where 
 % n is the number of measurements per subject and k is the number of 
 % variables that were measured. 
 
@@ -12,7 +12,7 @@ txt = cellfun(@num2str,raw,'UniformOutput',0);
 
 %identify the column 'label_col' with subject/image label
 TF = contains(txt, subject_label, 'Ignorecase', true);
-[~, columns] = size(txt(TF));
+columns = size(txt(TF),2);
 if columns==1 
     [label_row,label_column,v] = find(TF);
     fprintf(['The labels %s are in column %i ',...
@@ -29,7 +29,7 @@ index=cellfun(@(s)sscanf(s,'%u',1), txt(:,label_col), 'uniformoutput',false);
 index_mat= cell2mat(index(~cellfun(@isempty, index)));
 [~,idx]=unique(index_mat,'rows');
 subjects = index_mat(idx,:);
-[total_subjects, ~] = size(subjects); 
+total_subjects = size(subjects,1); 
 if (total_subjects>0)
     fprintf(['%u unique subject labels found in column %u ',...
               'of %s.\n'], total_subjects, label_col, filename);
@@ -40,7 +40,7 @@ end
 
 %identify the columns 'data_col' with the data entries
 data_col = [];
-[~, data_fields] = size(data_labels); 
+data_fields = size(data_labels,2); 
 for i = 1:data_fields
     TF = contains(txt, data_labels{i}, 'Ignorecase', true);
     [row, columns] = size(txt(TF));
@@ -56,14 +56,13 @@ for i = 1:data_fields
 end
 
 
-
 for i=1:total_subjects
     TF = contains(txt(:, label_col), string(subjects(i)), 'Ignorecase', true);
     tmp = raw(TF, data_col); 
     numericTF= cellfun(@isnumeric,tmp);
     tmp(~numericTF)={nan};
     tmp(any(cellfun(@(x) any(isnan(x)),tmp),2),:) = [];
-    [entries_loaded, ~] = size(tmp); 
+    entries_loaded = size(tmp,1); 
     fprintf(['%u entries points loaded for subject %i',...
               'from %s.\n'], entries_loaded, subjects(i), filename);
     data{i} = tmp;

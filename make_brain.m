@@ -1,4 +1,4 @@
-function B= make_brain (k1divV, k2divV, subject_data)
+function B= make_brain (k, subject_data)
 
 % This function approximates the solution of
 % VC'(t) = k1A(t) - k2C(t)
@@ -10,21 +10,21 @@ function B= make_brain (k1divV, k2divV, subject_data)
 % for discrete measurements, where 
 % {t_{j-1}} are subject_data(:,1)
 % {t_{j}} are subject_data(:,2)
-% {C(t_i)} are subject_data(:,3)
-% {A(t_j)} are subject_data(:,4)
+% {C_CSF(t_i)} are subject_data(:,3)[These measurements are not used]
+% {C(t_i)} are subject_data(:,4) [These measurements are not used]
+% {A(t_j)} are subject_data(:,5)
 
 A =  num2cell(subject_data,2);
-[n,~] = size(A);
-lin_idx = 1:n;
-I =  num2cell (lin_idx); 
-B= cellfun(@(i)sum_convo_terms(k1divV, k2divV, A, i), I); 
+n = size(A,1);
+I = num2cell (1:n); 
+B=  cellfun(@(i)sum_convo_terms(k, A, i), I); 
 
- function s = sum_convo_terms(k1divV,k2divV, A, i)
+ function s = sum_convo_terms(k, A, i)
        C = cellfun(@(a)convo_term(a, A{i}{2}), A(1:i));  
-       s = k1divV*sum(C)/k2divV ;
+       s = k(1)*sum(C)/k(2) ;
        
        function c = convo_term(Aj, ti)
-          c = Aj{4}*(exp(-k2divV*(ti-Aj{2}))-exp (-k2divV*(ti-Aj{1})));
+          c = Aj{5}*(exp(-k(2)*(ti-Aj{2}))-exp (-k(2)*(ti-Aj{1})));
        end
  end
 end
