@@ -1,4 +1,5 @@
-function [data, subjects]= TACfromXls (filename, sheet, subject_label, data_labels)
+function [data, subjects, disease]= TACfromXls (filename, sheet, subject_label,...
+                           diseaseT, diseaseF, data_labels)
 
 % This function loads the content of sheet number 'sheet' from an Excel 
 % file 'filename' into a 1 x m cell array, where m is the number of
@@ -6,6 +7,8 @@ function [data, subjects]= TACfromXls (filename, sheet, subject_label, data_labe
 % by 'subject_label'.  Each cell contains a n x k double array where 
 % n is the number of measurements per subject and k is the number of 
 % variables that were measured. 
+
+%Input: string filename  
 
 [~,~,raw]= xlsread(filename,1);
 txt = cellfun(@num2str,raw,'UniformOutput',0);
@@ -57,7 +60,7 @@ end
 
 
 for i=1:total_subjects
-    TF = contains(txt(:, label_col), string(subjects(i)), 'Ignorecase', true);
+    TF = contains(txt(:, label_col), string(subjects(i)), 'Ignorecase', true);     
     tmp = raw(TF, data_col); 
     numericTF= cellfun(@isnumeric,tmp);
     tmp(~numericTF)={nan};
@@ -66,7 +69,20 @@ for i=1:total_subjects
     fprintf(['%u entries points loaded for subject %i',...
               'from %s.\n'], entries_loaded, subjects(i), filename);
     data{i} = tmp;
-
+    
+    diseaseTarr = contains(raw(TF, label_col), string(diseaseT), 'Ignorecase', true);
+    diseaseFarr = contains(raw(TF, label_col), string(diseaseF), 'Ignorecase', true);
+    if any (diseaseTarr) && ~any (diseaseFarr) 
+        disease{i} = true; 
+        fprintf('This subject has the disease\n');
+    elseif ~any(diseaseTarr) && any (diseaseFarr) 
+        disease{i} = false;
+        fprintf('This subject does not have the disease\n');
+    elseif ~any (diseaseTarr) && ~any (diseaseFarr)
+        error('Conflicting disease labels for this subject\n');
+    else  
+         fprintf('This subject does not have the disease label. Assume no disease \n');
+        disease{i} = false;
 end 
 
 end

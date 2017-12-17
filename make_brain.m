@@ -5,7 +5,7 @@ function x= make_brain (k, subject_data,V, V_CSF )
 % V_CSF C_CSF'(t)= k5 A(t) -(k3+k6) C_CSF(t)+k_4 C(t)
 % given by 
 % C(t) =  exp(tM) [ \int_0^t exp (-sM) ds ] v 
-% by the trapezoid rule
+% by 
 % x(t_i) =  exp(t_i M)[ \sum_{j=1}^i (t_j - t_{j-1}) ( A(t_j)* exp(-t_jM)+
 %           + A(t_{j-1})* exp(-t_{j-1}M)) /2 ] v
 % for discrete measurements, where
